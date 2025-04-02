@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
@@ -5,9 +6,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { ShoppingCart, Sun, Moon, Menu, User, LogOut } from 'lucide-react';
+import { Sun, Moon, Menu, User, LogOut } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import CartSheet from '@/components/cart/cart-sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +29,21 @@ export default function Header() {
 
   useEffect(() => {
     checkUser();
-  }, []);
+
+    // Subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      if (session) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setUserProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [checkUser]);
 
   async function checkUser() {
     try {
@@ -35,16 +51,24 @@ export default function Header() {
       setIsAuthenticated(!!session);
 
       if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
-        setUserProfile(profile);
+        await fetchUserProfile(session.user.id);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
+    }
+  }
+
+  async function fetchUserProfile(userId: string) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
     }
   }
 
@@ -102,12 +126,7 @@ export default function Header() {
           </DropdownMenu>
 
           {isAuthenticated && userProfile?.role === 'client' && (
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                0
-              </span>
-            </Button>
+            <CartSheet />
           )}
 
           <Button variant="ghost" size="icon" className="md:hidden">

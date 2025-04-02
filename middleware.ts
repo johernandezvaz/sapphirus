@@ -6,11 +6,10 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Refresh session if expired - required for auto session refresh
+  const { data: { session }, error } = await supabase.auth.getSession();
 
-  // If no session, redirect to auth page for protected routes
+  // If no session and trying to access protected routes, redirect to auth page
   if (!session && (
     req.nextUrl.pathname.startsWith('/dashboard') || 
     req.nextUrl.pathname.startsWith('/profile')
