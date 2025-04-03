@@ -88,7 +88,7 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
               transition={{ duration: 0.3 }}
             >
               <img
-                src={product.images[0] || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
+                src={product.image_url || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />
@@ -104,7 +104,7 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
                 <p className="text-lg font-semibold">
                   ${product.price.toFixed(2)}
                 </p>
-                {product.stock_quantity > 0 ? (
+                {product.stock > 0 ? (
                   <span className="text-sm text-green-600 dark:text-green-400">
                     En stock
                   </span>
@@ -118,7 +118,7 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
             <CardFooter>
               <Button 
                 className="w-full"
-                disabled={product.stock_quantity === 0}
+                disabled={product.stock === 0}
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Agregar al Carrito
