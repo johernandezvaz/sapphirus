@@ -35,7 +35,7 @@ interface Product {
   price: number;
   category: string;
   stock: number;
-  image_url: string;
+  image_url: string[];
   created_at: string;
 }
 
@@ -45,7 +45,7 @@ interface ProductFormData {
   price: number;
   category: string;
   stock: number;
-  image_url: string;
+  image_url: string[];
 }
 
 export default function AdminDashboard() {
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState(7);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<string>('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch all products for admin
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       setShowProductForm(false);
-      setUploadedImage('');
+      setUploadedImages([]);
       toast({
         title: "Éxito",
         description: "Producto creado exitosamente",
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       setShowProductForm(false);
       setEditingProduct(null);
-      setUploadedImage('');
+      setUploadedImages([]);
       toast({
         title: "Éxito",
         description: "Producto actualizado exitosamente",
@@ -171,27 +171,38 @@ export default function AdminDashboard() {
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    const maxImages = 5;
 
-    if (!file.type.startsWith('image/')) {
+    if (uploadedImages.length + files.length > maxImages) {
       toast({
         title: "Error",
-        description: "Solo se permiten archivos de imagen",
+        description: `Máximo ${maxImages} imágenes permitidas`,
         variant: "destructive"
       });
       return;
     }
 
-    try {
-      const imageUrl = await uploadToCloudinary(file);
-      setUploadedImage(imageUrl);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Error al subir la imagen",
-        variant: "destructive"
-      });
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Error",
+          description: "Solo se permiten archivos de imagen",
+          variant: "destructive"
+        });
+        continue;
+      }
+
+      try {
+        const imageUrl = await uploadToCloudinary(file);
+        setUploadedImages(prev => [...prev, imageUrl]);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Error al subir la imagen",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -210,7 +221,7 @@ export default function AdminDashboard() {
         price: parseFloat(formData.get('price') as string),
         category: formData.get('category') as string,
         stock: parseInt(formData.get('stock') as string),
-        image_url: uploadedImage
+        image_url: uploadedImages
       };
 
       if (editingProduct) {
@@ -342,7 +353,7 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setEditingProduct(null);
                     setShowProductForm(true);
-                    setUploadedImage('');
+                    setUploadedImages([]);
                   }}
                 >
                   <Plus className="mr-2 h-5 w-5" />
@@ -423,30 +434,31 @@ export default function AdminDashboard() {
 
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      Imagen del Producto
+                      Imágenes del Producto (Máximo 5)
                     </label>
                     <div className="mt-2 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                      {uploadedImage && (
-                        <div className="relative aspect-square rounded-lg overflow-hidden">
+                      {uploadedImages.map((image, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden">
                           <img
-                            src={uploadedImage}
-                            alt="Preview"
+                            src={image}
+                            alt={`Preview ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
                           <button
                             type="button"
-                            onClick={() => setUploadedImage('')}
+                            onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
                             className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-sm hover:bg-gray-100"
                           >
                             <Trash2 className="h-4 w-4 text-gray-600" />
                           </button>
                         </div>
-                      )}
-                      {!uploadedImage && (
+                      ))}
+                      {uploadedImages.length < 5 && (
                         <div className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
                           <input
                             type="file"
                             accept="image/*"
+                            multiple
                             onChange={handleImageUpload}
                             className="hidden"
                             id="image-upload"
@@ -472,14 +484,14 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setShowProductForm(false);
                         setEditingProduct(null);
-                        setUploadedImage('');
+                        setUploadedImages([]);
                       }}
                     >
                       Cancelar
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !uploadedImage}
+                      disabled={isSubmitting || uploadedImages.length === 0}
                     >
                       {isSubmitting ? (
                         <>
@@ -499,7 +511,7 @@ export default function AdminDashboard() {
                   <Card key={product.id} className="overflow-hidden">
                     <div className="aspect-square relative">
                       <img
-                        src={product.image_url}
+                        src={product.image_url[0]}
                         alt={product.name}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
@@ -530,7 +542,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               setEditingProduct(product);
                               setShowProductForm(true);
-                              setUploadedImage(product.image_url);
+                              setUploadedImages(product.image_url);
                             }}
                           >
                             <Edit2 className="h-4 w-4" />

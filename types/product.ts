@@ -5,7 +5,7 @@ export interface Product {
   price: number;
   category: string;
   stock: number;
-  image_url: string;
+  image_url: string[];
   created_at: string;
 }
 
@@ -15,5 +15,5 @@ export interface ProductFormData {
   price: number;
   category: string;
   stock: number;
-  image_url: string;
+  image_url: string[];
 }
