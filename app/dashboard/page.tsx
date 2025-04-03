@@ -68,6 +68,24 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
+  // Helper function to get the first valid image URL
+  const getFirstImageUrl = (imageUrl: string | string[]): string => {
+    if (!imageUrl) return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+    
+    if (typeof imageUrl === 'string') {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+      } catch {
+        return imageUrl;
+      }
+    }
+    
+    return Array.isArray(imageUrl) && imageUrl.length > 0 
+      ? imageUrl[0] 
+      : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
+
   // Fetch all products for admin
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ['products', 'admin'],
@@ -523,9 +541,7 @@ export default function AdminDashboard() {
                   <Card key={product.id} className="overflow-hidden">
                     <div className="aspect-square relative">
                       <img
-                        src={Array.isArray(product.image_url) && product.image_url.length > 0 
-                          ? product.image_url[0] 
-                          : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
+                        src={getFirstImageUrl(product.image_url)}
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />
