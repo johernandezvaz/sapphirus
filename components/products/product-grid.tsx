@@ -88,7 +88,9 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
               transition={{ duration: 0.3 }}
             >
               <img
-                src={product.image_url?.[0] || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
+                src={Array.isArray(product.image_url) && product.image_url.length > 0 
+                  ? product.image_url[0] 
+                  : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />

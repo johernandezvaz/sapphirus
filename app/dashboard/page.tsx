@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, DollarSign, ShoppingBag, Package,
@@ -15,7 +15,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Stats {
   userCount: number;
@@ -56,6 +66,7 @@ export default function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Fetch all products for admin
   const { data: products, isLoading: isLoadingProducts } = useQuery({
@@ -163,6 +174,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      setProductToDelete(null);
       toast({
         title: "Éxito",
         description: "Producto eliminado exitosamente",
@@ -408,7 +420,7 @@ export default function AdminDashboard() {
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Cantidad en Stock
+                        Stock
                       </label>
                       <Input
                         type="number"
@@ -511,9 +523,11 @@ export default function AdminDashboard() {
                   <Card key={product.id} className="overflow-hidden">
                     <div className="aspect-square relative">
                       <img
-                        src={product.image_url[0]}
+                        src={Array.isArray(product.image_url) && product.image_url.length > 0 
+                          ? product.image_url[0] 
+                          : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
                         alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                     <CardContent className="p-4">
@@ -547,17 +561,40 @@ export default function AdminDashboard() {
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (window.confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-                                deleteProduct.mutate(product.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setProductToDelete(product)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción no se puede deshacer. El producto será eliminado permanentemente.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setProductToDelete(null)}>
+                                  Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (productToDelete) {
+                                      deleteProduct.mutate(productToDelete.id);
+                                    }
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     </CardContent>
