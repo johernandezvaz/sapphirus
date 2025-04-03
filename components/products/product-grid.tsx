@@ -35,6 +35,24 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
     }
   };
 
+  // Helper function to get the first valid image URL
+  const getFirstImageUrl = (imageUrl: string | string[]): string => {
+    if (!imageUrl) return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+    
+    if (typeof imageUrl === 'string') {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+      } catch {
+        return imageUrl;
+      }
+    }
+    
+    return Array.isArray(imageUrl) && imageUrl.length > 0 
+      ? imageUrl[0] 
+      : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -88,9 +106,7 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
               transition={{ duration: 0.3 }}
             >
               <img
-                src={Array.isArray(product.image_url) && product.image_url.length > 0 
-                  ? product.image_url[0] 
-                  : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
+                src={getFirstImageUrl(product.image_url)}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />

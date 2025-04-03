@@ -14,7 +14,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
-  image_url: string;
+  image_url: string | string[];
   category: string;
   stock: number;
 }
@@ -43,6 +43,24 @@ export default function FeaturedProducts() {
 
     fetchProducts();
   }, []);
+
+  // Helper function to get the first valid image URL
+  const getFirstImageUrl = (imageUrl: string | string[]): string => {
+    if (!imageUrl) return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+    
+    if (typeof imageUrl === 'string') {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+      } catch {
+        return imageUrl;
+      }
+    }
+    
+    return Array.isArray(imageUrl) && imageUrl.length > 0 
+      ? imageUrl[0] 
+      : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -132,7 +150,7 @@ export default function FeaturedProducts() {
                   transition={{ duration: 0.3 }}
                 >
                   <img
-                    src={product.image_url || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc'}
+                    src={getFirstImageUrl(product.image_url)}
                     alt={product.name}
                     className="h-full w-full object-cover"
                   />
