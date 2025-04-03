@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 /* eslint-disable react-hooks/exhaustive-deps */
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
@@ -9,16 +6,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-<<<<<<< HEAD
-import { ShoppingCart, Sun, Moon, Menu, User, LogOut } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-=======
 import { Sun, Moon, Menu, User, LogOut } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import CartSheet from '@/components/cart/cart-sheet';
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,9 +29,6 @@ export default function Header() {
 
   useEffect(() => {
     checkUser();
-<<<<<<< HEAD
-  }, []);
-=======
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -56,7 +44,6 @@ export default function Header() {
       subscription.unsubscribe();
     };
   }, [checkUser]);
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
 
   async function checkUser() {
     try {
@@ -64,25 +51,13 @@ export default function Header() {
       setIsAuthenticated(!!session);
 
       if (session) {
-<<<<<<< HEAD
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
-        setUserProfile(profile);
-=======
         await fetchUserProfile(session.user.id);
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
     }
   }
 
-<<<<<<< HEAD
-=======
   async function fetchUserProfile(userId: string) {
     try {
       const { data: profile } = await supabase
@@ -97,7 +72,6 @@ export default function Header() {
     }
   }
 
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -152,16 +126,7 @@ export default function Header() {
           </DropdownMenu>
 
           {isAuthenticated && userProfile?.role === 'client' && (
-<<<<<<< HEAD
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                0
-              </span>
-            </Button>
-=======
             <CartSheet />
->>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
           )}
 
           <Button variant="ghost" size="icon" className="md:hidden">
