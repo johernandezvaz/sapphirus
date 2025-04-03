@@ -7,6 +7,52 @@
 //   secure: true,
 // });
 
+<<<<<<< HEAD
+=======
+
+declare global {
+  interface Window {
+    cloudinary: any;
+  }
+}
+
+export function getCloudinaryUploadWidget(): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      reject(new Error('Cloudinary configuration is missing'));
+      return;
+    }
+
+    const widget = window.cloudinary.createUploadWidget(
+      {
+        cloudName,
+        uploadPreset,
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        maxFiles: 1,
+      },
+      (error: any, result: any) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        if (result.event === 'success') {
+          resolve(result.info.secure_url);
+        }
+      }
+    );
+
+    widget.open();
+  });
+}
+
+
+
+>>>>>>> d05fbbe30486634cd3d9756ae0528ce847900aa3
 export async function uploadToCloudinary(file: File): Promise<string> {
     try {
       const formData = new FormData();
