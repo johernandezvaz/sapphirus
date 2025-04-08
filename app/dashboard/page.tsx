@@ -45,6 +45,7 @@ interface Product {
   price: number;
   category: string;
   stock: number;
+  size?: string;
   image_url: string[];
   created_at: string;
 }
@@ -55,6 +56,7 @@ interface ProductFormData {
   price: number;
   category: string;
   stock: number;
+  size?: string;
   image_url: string[];
 }
 
@@ -84,6 +86,22 @@ export default function AdminDashboard() {
     return Array.isArray(imageUrl) && imageUrl.length > 0 
       ? imageUrl[0] 
       : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
+
+  // Helper function to parse image URLs
+  const parseImageUrls = (imageUrl: string | string[]): string[] => {
+    if (!imageUrl) return [];
+    
+    if (typeof imageUrl === 'string') {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) ? parsed : [imageUrl];
+      } catch {
+        return [imageUrl];
+      }
+    }
+    
+    return Array.isArray(imageUrl) ? imageUrl : [imageUrl];
   };
 
   // Fetch all products for admin
@@ -251,6 +269,7 @@ export default function AdminDashboard() {
         price: parseFloat(formData.get('price') as string),
         category: formData.get('category') as string,
         stock: parseInt(formData.get('stock') as string),
+        size: formData.get('size') as string || undefined,
         image_url: uploadedImages
       };
 
@@ -273,6 +292,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     document.title = 'Sapphirus - Panel de Administración';
   }, []);
+
+  useEffect(() => {
+    if (editingProduct) {
+      setUploadedImages(parseImageUrls(editingProduct.image_url));
+    }
+  }, [editingProduct]);
 
   if (isLoadingStats || isLoadingProducts) {
     return (
@@ -448,6 +473,18 @@ export default function AdminDashboard() {
                         defaultValue={editingProduct?.stock}
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Talla (Opcional)
+                      </label>
+                      <Input
+                        type="text"
+                        name="size"
+                        defaultValue={editingProduct?.size}
+                        placeholder="Ej: S, M, L, XL, 42, etc."
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -559,6 +596,11 @@ export default function AdminDashboard() {
                           Stock: {product.stock}
                         </span>
                       </div>
+                      {product.size && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Talla: {product.size}
+                        </p>
+                      )}
                       <div className="mt-4 flex justify-between items-center">
                         <span className={`text-sm ${
                           product.stock > 0 ? 'text-green-600' : 'text-red-600'
@@ -572,7 +614,6 @@ export default function AdminDashboard() {
                             onClick={() => {
                               setEditingProduct(product);
                               setShowProductForm(true);
-                              setUploadedImages(product.image_url);
                             }}
                           >
                             <Edit2 className="h-4 w-4" />
