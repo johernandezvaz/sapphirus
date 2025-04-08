@@ -2,44 +2,84 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Cache for user roles to prevent excessive database queries
-const roleCache = new Map<string, { role: string; timestamp: number }>();
-const sessionCache = new Map<string, { session: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-const SESSION_CACHE_DURATION = 60 * 1000; // 1 minute in milliseconds
+// Improved session cache with TTL and automatic cleanup
+class SessionCache {
+  private cache: Map<string, { data: any; expires: number }> = new Map();
+  private readonly ttl: number = 5 * 60 * 1000; // 5 minutes TTL
+  private cleanupInterval: NodeJS.Timeout;
+
+  constructor() {
+    // Run cleanup every minute
+    this.cleanupInterval = setInterval(() => this.cleanup(), 60 * 1000);
+  }
+
+  set(key: string, data: any) {
+    this.cache.set(key, {
+      data,
+      expires: Date.now() + this.ttl
+    });
+  }
+
+  get(key: string): any | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expires) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.data;
+  }
+
+  private cleanup() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now > value.expires) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  destroy() {
+    clearInterval(this.cleanupInterval);
+    this.clear();
+  }
+}
+
+// Create singleton instances of caches
+const sessionCache = new SessionCache();
+const roleCache = new SessionCache();
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
   try {
-    // Check URL cache key
-    const urlKey = req.url;
-    const now = Date.now();
+    const pathname = req.nextUrl.pathname;
+    const cacheKey = `${req.url}-${pathname}`;
 
     // Check session cache first
-    const cachedSession = sessionCache.get(urlKey);
-    let session;
-
-    if (cachedSession && (now - cachedSession.timestamp) < SESSION_CACHE_DURATION) {
-      session = cachedSession.session;
-    } else {
-      // Refresh session if expired
-      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        return redirectToAuth(req);
-      }
-
+    let session = sessionCache.get(cacheKey);
+    
+    if (!session) {
+      // Refresh session if not in cache
+      const { data: { session: newSession } } = await supabase.auth.getSession();
       session = newSession;
-      sessionCache.set(urlKey, { session: newSession, timestamp: now });
+      
+      if (session) {
+        sessionCache.set(cacheKey, session);
+      }
     }
 
-    // If no session and trying to access protected routes, redirect to auth page
+    // Handle protected routes
     if (!session && (
-      req.nextUrl.pathname.startsWith('/dashboard') || 
-      req.nextUrl.pathname.startsWith('/profile')
+      pathname.startsWith('/dashboard') || 
+      pathname.startsWith('/profile')
     )) {
       return redirectToAuth(req);
     }
@@ -50,31 +90,26 @@ export async function middleware(req: NextRequest) {
       let userRole: string | undefined;
 
       // Check role cache
-      const cachedRole = roleCache.get(userId);
+      userRole = roleCache.get(userId);
 
-      if (cachedRole && (now - cachedRole.timestamp) < CACHE_DURATION) {
-        userRole = cachedRole.role;
-      } else {
-        // Fetch role from database with retry logic
-        userRole = await fetchUserRole(supabase, userId);
+      if (!userRole) {
+        // Implement exponential backoff for role fetching
+        userRole = await fetchUserRoleWithBackoff(supabase, userId);
         
         if (userRole) {
-          roleCache.set(userId, { role: userRole, timestamp: now });
+          roleCache.set(userId, userRole);
         }
       }
 
-      // Clean up old cache entries periodically
-      cleanupCache(now);
-
       // Redirect from auth page when logged in
-      if (req.nextUrl.pathname.startsWith('/auth')) {
+      if (pathname.startsWith('/auth')) {
         return NextResponse.redirect(
           new URL(userRole === 'admin' ? '/dashboard' : '/', req.url)
         );
       }
 
       // Protect admin routes
-      if (req.nextUrl.pathname.startsWith('/dashboard')) {
+      if (pathname.startsWith('/dashboard')) {
         if (userRole !== 'admin') {
           return NextResponse.redirect(new URL('/', req.url));
         }
@@ -88,10 +123,11 @@ export async function middleware(req: NextRequest) {
   }
 }
 
-async function fetchUserRole(supabase: any, userId: string, retries = 3): Promise<string | undefined> {
-  let lastError;
-  
-  for (let attempt = 0; attempt < retries; attempt++) {
+async function fetchUserRoleWithBackoff(supabase: any, userId: string): Promise<string | undefined> {
+  const maxRetries = 3;
+  const baseDelay = 1000; // Start with 1 second delay
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -103,41 +139,19 @@ async function fetchUserRole(supabase: any, userId: string, retries = 3): Promis
       if (error) throw error;
       return profile?.role;
     } catch (error) {
-      lastError = error;
-      
-      if (attempt === retries - 1) {
-        console.error('Failed to fetch user role after', retries, 'attempts:', error);
+      if (attempt === maxRetries - 1) {
+        console.error('Failed to fetch user role after', maxRetries, 'attempts:', error);
         return undefined;
       }
-      
-      // Exponential backoff with jitter
-      const backoff = Math.min(1000 * Math.pow(2, attempt), 10000);
-      const jitter = Math.random() * 1000;
-      await new Promise(resolve => setTimeout(resolve, backoff + jitter));
-    }
-  }
 
-  if (lastError) {
-    console.error('All retries failed:', lastError);
+      // Calculate delay with exponential backoff and jitter
+      const jitter = Math.random() * 1000;
+      const delay = Math.min(baseDelay * Math.pow(2, attempt) + jitter, 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 
   return undefined;
-}
-
-function cleanupCache(now: number) {
-  // Clean up role cache using Array.from to avoid iteration issues
-  Array.from(roleCache.entries()).forEach(([key, value]) => {
-    if (now - value.timestamp > CACHE_DURATION) {
-      roleCache.delete(key);
-    }
-  });
-
-  // Clean up session cache using Array.from to avoid iteration issues
-  Array.from(sessionCache.entries()).forEach(([key, value]) => {
-    if (now - value.timestamp > SESSION_CACHE_DURATION) {
-      sessionCache.delete(key);
-    }
-  });
 }
 
 function redirectToAuth(req: NextRequest) {
