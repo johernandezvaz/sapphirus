@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, Search } from 'lucide-react';
+import { Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import ProductGrid from '@/components/products/product-grid';
 import { Product } from '@/types/product';
+
+const ITEMS_PER_PAGE = 16;
 
 const categories = [
   { value: 'all', label: 'Todas las categorías' },
@@ -53,34 +54,55 @@ export default function CatalogPage() {
     sort: 'featured'
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     document.title = 'Sapphirus - Catálogo';
   }, []);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products', filters],
+    queryKey: ['products', filters, currentPage],
     queryFn: async () => {
+      let countQuery = supabase
+        .from('products')
+        .select('id', { count: 'exact' });
+
       let query = supabase
         .from('products')
         .select('*');
 
+      // Apply filters to both queries
       if (filters.category && filters.category !== 'all') {
+        countQuery = countQuery.eq('category', filters.category);
         query = query.eq('category', filters.category);
       }
 
       if (filters.search) {
+        countQuery = countQuery.ilike('name', `%${filters.search}%`);
         query = query.ilike('name', `%${filters.search}%`);
       }
 
       if (filters.minPrice) {
+        countQuery = countQuery.gte('price', filters.minPrice);
         query = query.gte('price', filters.minPrice);
       }
 
       if (filters.maxPrice) {
+        countQuery = countQuery.lte('price', filters.maxPrice);
         query = query.lte('price', filters.maxPrice);
       }
 
+      // Get total count
+      const { count } = await countQuery;
+      setTotalItems(count || 0);
+
+      // Apply sorting and pagination
       switch (filters.sort) {
         case 'price-asc':
           query = query.order('price', { ascending: true });
@@ -95,11 +117,18 @@ export default function CatalogPage() {
           query = query.order('created_at', { ascending: false });
       }
 
+      // Apply pagination
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      query = query
+        .range(from, from + ITEMS_PER_PAGE - 1);
+
       const { data, error } = await query;
       if (error) throw error;
       return data as Product[];
     }
   });
+
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +258,42 @@ export default function CatalogPage() {
         </div>
 
         <ProductGrid products={products} isLoading={isLoading} />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

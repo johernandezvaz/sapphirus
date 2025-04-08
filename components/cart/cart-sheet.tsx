@@ -1,7 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
-import { ShoppingBag, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingBag, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,9 +13,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Input } from '@/components/ui/input';
+import PaymentForm from '@/components/checkout/payment-form';
 
 export default function CartSheet() {
-  const { cart, removeItem, updateQuantity } = useCartStore();
+  const { cart, removeItem, updateQuantity, clearCart } = useCartStore();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const handleCheckoutSuccess = () => {
+    clearCart();
+    setIsCheckingOut(false);
+  };
 
   return (
     <Sheet>
@@ -41,6 +49,13 @@ export default function CartSheet() {
                 Agrega algunos productos para comenzar
               </p>
             </div>
+          ) : isCheckingOut ? (
+            <PaymentForm
+              amount={cart.total}
+              items={cart.items}
+              onSuccess={handleCheckoutSuccess}
+              onCancel={() => setIsCheckingOut(false)}
+            />
           ) : (
             <div className="space-y-4">
               {cart.items.map((item) => (
@@ -84,7 +99,10 @@ export default function CartSheet() {
                   <span>Total</span>
                   <span>${cart.total.toFixed(2)}</span>
                 </div>
-                <Button className="w-full mt-4">
+                <Button 
+                  className="w-full mt-4"
+                  onClick={() => setIsCheckingOut(true)}
+                >
                   Proceder al Pago
                 </Button>
               </div>

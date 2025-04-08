@@ -10,6 +10,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { requireAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -290,6 +291,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    requireAuth('admin');
     document.title = 'Sapphirus - Panel de Administración';
   }, []);
 

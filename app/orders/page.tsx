@@ -1,13 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 "use client"
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import OrderReceipt from '@/components/orders/order-receipt';
 
 interface OrderItem {
   id: string;
@@ -16,7 +18,7 @@ interface OrderItem {
   unit_price: number;
   product: {
     name: string;
-    images: string[];
+    image_url: string[];
   };
 }
 
@@ -53,15 +55,20 @@ const statusLabels = {
 };
 
 export default function OrdersPage() {
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
   useEffect(() => {
+    requireAuth();
     document.title = 'Sapphirus - Mis Pedidos';
   }, []);
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, error } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
+
+      console.log("Fetching orders for user:", session.user.id);
 
       const { data, error } = await supabase
         .from('orders')
@@ -71,22 +78,70 @@ export default function OrdersPage() {
             *,
             product:products (
               name,
-              images
+              image_url
             )
           )
         `)
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching orders:", error);
+        throw error;
+      }
+      
+      console.log("Orders fetched:", data);
       return data as Order[];
     }
   });
+
+  // Helper function to get the first valid image URL
+  const getFirstImageUrl = (imageUrl: string | string[]): string => {
+    if (!imageUrl) return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+    
+    if (typeof imageUrl === 'string') {
+      try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+      } catch {
+        return imageUrl;
+      }
+    }
+    
+    return Array.isArray(imageUrl) && imageUrl.length > 0 
+      ? imageUrl[0] 
+      : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-muted/50 pt-20">
+        <div className="container max-w-4xl mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <XCircle className="h-16 w-16 text-red-500 mb-6" />
+              <h2 className="text-2xl font-semibold mb-4">Error al cargar pedidos</h2>
+              <p className="text-muted-foreground mb-8 max-w-md text-center">
+                Ha ocurrido un error al cargar tus pedidos. Por favor, intenta nuevamente más tarde.
+              </p>
+              <Button onClick={() => window.location.reload()}>
+                Reintentar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -138,6 +193,8 @@ export default function OrdersPage() {
           <div className="space-y-6">
             {orders.map((order) => {
               const StatusIcon = statusIcons[order.status];
+              const isExpanded = expandedOrder === order.id;
+              
               return (
                 <motion.div
                   key={order.id}
@@ -145,10 +202,19 @@ export default function OrdersPage() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg">
-                        Pedido #{order.id.slice(0, 8)}
-                      </CardTitle>
+                    <CardHeader 
+                      className="flex flex-row items-center justify-between cursor-pointer"
+                      onClick={() => toggleOrderExpansion(order.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">
+                          Pedido #{order.id.slice(0, 8)}
+                        </CardTitle>
+                        {isExpanded ? 
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" /> : 
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        }
+                      </div>
                       <div className={`flex items-center gap-2 ${statusColors[order.status]}`}>
                         <StatusIcon className="h-5 w-5" />
                         <span className="text-sm font-medium">
@@ -158,20 +224,20 @@ export default function OrdersPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {order.order_items.map((item) => (
+                        {order.order_items?.map((item) => (
                           <div
                             key={item.id}
                             className="flex items-center gap-4 py-2 border-b last:border-0"
                           >
                             <div className="h-16 w-16 relative rounded overflow-hidden">
                               <img
-                                src={item.product.images[0]}
-                                alt={item.product.name}
+                                src={getFirstImageUrl(item.product?.image_url)}
+                                alt={item.product?.name || 'Producto'}
                                 className="object-cover w-full h-full"
                               />
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-medium">{item.product.name}</h3>
+                              <h3 className="font-medium">{item.product?.name || 'Producto'}</h3>
                               <p className="text-sm text-muted-foreground">
                                 Cantidad: {item.quantity} × ${item.unit_price.toFixed(2)}
                               </p>
@@ -195,6 +261,18 @@ export default function OrdersPage() {
                             Total: ${order.total_amount.toFixed(2)}
                           </div>
                         </div>
+                        
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-6 pt-6 border-t"
+                          >
+                            <OrderReceipt order={order} />
+                          </motion.div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

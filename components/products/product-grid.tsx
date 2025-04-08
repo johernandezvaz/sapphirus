@@ -7,6 +7,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Product } from '@/types/product';
+import { useCartStore } from '@/lib/store';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 interface ProductGridProps {
   products?: Product[];
@@ -14,6 +17,9 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ products, isLoading }: ProductGridProps) {
+  const { addItem } = useCartStore();
+  const { toast } = useToast();
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -51,6 +57,24 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
     return Array.isArray(imageUrl) && imageUrl.length > 0 
       ? imageUrl[0] 
       : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  };
+
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault(); // Prevent navigation when clicking the button
+    e.stopPropagation(); // Stop event bubbling
+
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getFirstImageUrl(product.image_url),
+    });
+
+    toast({
+      title: "Producto agregado",
+      description: `${product.name} se ha agregado al carrito`,
+    });
   };
 
   if (isLoading) {
@@ -99,50 +123,53 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
           whileHover={{ scale: 1.02 }}
           className="h-full"
         >
-          <Card className="h-full overflow-hidden">
-            <motion.div 
-              className="aspect-square overflow-hidden"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3 }}
-            >
-              <img
-                src={getFirstImageUrl(product.image_url)}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-            </motion.div>
-            <CardHeader>
-              <CardTitle className="line-clamp-1">{product.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                {product.description}
-              </p>
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-semibold">
-                  ${product.price.toFixed(2)}
-                </p>
-                {product.stock > 0 ? (
-                  <span className="text-sm text-green-600 dark:text-green-400">
-                    En stock
-                  </span>
-                ) : (
-                  <span className="text-sm text-red-600 dark:text-red-400">
-                    Agotado
-                  </span>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full"
-                disabled={product.stock === 0}
+          <Link href={`/products/${product.id}`}>
+            <Card className="h-full overflow-hidden">
+              <motion.div 
+                className="aspect-square overflow-hidden"
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.3 }}
               >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Agregar al Carrito
-              </Button>
-            </CardFooter>
-          </Card>
+                <img
+                  src={getFirstImageUrl(product.image_url)}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                />
+              </motion.div>
+              <CardHeader>
+                <CardTitle className="line-clamp-1">{product.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                  {product.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-semibold">
+                    ${product.price.toFixed(2)}
+                  </p>
+                  {product.stock > 0 ? (
+                    <span className="text-sm text-green-600 dark:text-green-400">
+                      En stock
+                    </span>
+                  ) : (
+                    <span className="text-sm text-red-600 dark:text-red-400">
+                      Agotado
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full"
+                  disabled={product.stock === 0}
+                  onClick={(e) => handleAddToCart(e, product)}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Agregar al Carrito
+                </Button>
+              </CardFooter>
+            </Card>
+          </Link>
         </motion.div>
       ))}
     </motion.div>
