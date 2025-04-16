@@ -10,6 +10,8 @@ import { Product } from '@/types/product';
 import { useCartStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 
 interface ProductGridProps {
   products?: Product[];
@@ -17,8 +19,25 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ products, isLoading }: ProductGridProps) {
-  const { addItem } = useCartStore();
+  const { addItem, cart } = useCartStore();
   const { toast } = useToast();
+
+  // Query to get user role
+  const { data: userRole } = useQuery({
+    queryKey: ['userRole'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      return data?.role;
+    }
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -62,6 +81,20 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.preventDefault(); // Prevent navigation when clicking the button
     e.stopPropagation(); // Stop event bubbling
+
+    // Check current cart quantity for this product
+    const currentCartItem = cart.items.find(item => item.productId === product.id);
+    const currentQuantity = currentCartItem?.quantity || 0;
+    const totalQuantity = currentQuantity + 1;
+
+    if (totalQuantity > product.stock) {
+      toast({
+        title: "Error",
+        description: `No puedes agregar más de ${product.stock} unidades de este producto`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     addItem({
       productId: product.id,
@@ -149,7 +182,7 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
                   </p>
                   {product.stock > 0 ? (
                     <span className="text-sm text-green-600 dark:text-green-400">
-                      En stock
+                      {product.stock} disponibles
                     </span>
                   ) : (
                     <span className="text-sm text-red-600 dark:text-red-400">
@@ -158,16 +191,18 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full"
-                  disabled={product.stock === 0}
-                  onClick={(e) => handleAddToCart(e, product)}
-                >
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Agregar al Carrito
-                </Button>
-              </CardFooter>
+              {userRole !== 'admin' && (
+                <CardFooter>
+                  <Button 
+                    className="w-full"
+                    disabled={product.stock === 0}
+                    onClick={(e) => handleAddToCart(e, product)}
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Agregar al Carrito
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           </Link>
         </motion.div>

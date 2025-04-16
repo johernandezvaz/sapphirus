@@ -43,7 +43,7 @@ export default function Header() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [checkUser]);
+  }, []);
 
   async function checkUser() {
     try {

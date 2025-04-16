@@ -8,20 +8,44 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingCart } from 'lucide-react';
+import { useCartStore } from '@/lib/store';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface Product {
   id: string;
   name: string;
   description: string;
   price: number;
-  image_url: string | string[];
   category: string;
   stock: number;
+  size?: string;
+  image_url: string[];
+  created_at: string;
 }
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addItem, cart } = useCartStore();
+  const { toast } = useToast();
+
+  // Query to get user role
+  const { data: userRole } = useQuery({
+    queryKey: ['userRole'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      return data?.role;
+    }
+  });
 
   useEffect(() => {
     async function fetchProducts() {
@@ -62,12 +86,44 @@ export default function FeaturedProducts() {
       : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
   };
 
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault(); // Prevent navigation when clicking the button
+    e.stopPropagation(); // Stop event bubbling
+
+    // Check current cart quantity for this product
+    const currentCartItem = cart.items.find(item => item.productId === product.id);
+    const currentQuantity = currentCartItem?.quantity || 0;
+    const totalQuantity = currentQuantity + 1;
+
+    if (totalQuantity > product.stock) {
+      toast({
+        title: "Error",
+        description: `No puedes agregar más de ${product.stock} unidades de este producto`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getFirstImageUrl(product.image_url),
+    });
+
+    toast({
+      title: "Producto agregado",
+      description: `${product.name} se ha agregado al carrito`,
+    });
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2
+        staggerChildren: 0.1
       }
     }
   };
@@ -168,7 +224,7 @@ export default function FeaturedProducts() {
                     </p>
                     {product.stock > 0 ? (
                       <span className="text-sm text-green-600 dark:text-green-400">
-                        En stock
+                        {product.stock} disponibles
                       </span>
                     ) : (
                       <span className="text-sm text-red-600 dark:text-red-400">
@@ -177,15 +233,18 @@ export default function FeaturedProducts() {
                     )}
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button 
-                    className="w-full"
-                    disabled={product.stock === 0}
-                  >
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Agregar al Carrito
-                  </Button>
-                </CardFooter>
+                {userRole !== 'admin' && (
+                  <CardFooter>
+                    <Button 
+                      className="w-full"
+                      disabled={product.stock === 0}
+                      onClick={(e) => handleAddToCart(e, product)}
+                    >
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Agregar al Carrito
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             </motion.div>
           ))}

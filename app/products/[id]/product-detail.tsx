@@ -11,14 +11,33 @@ import { useCartStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Product } from '@/types/product';
 
 export default function ProductDetail({ id }: { id: string }) {
   const router = useRouter();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
-  const { addItem } = useCartStore();
+  const [quantity, setQuantity] = useState(1);
+  const { addItem, cart } = useCartStore();
   const { toast } = useToast();
+
+  // Query to get user role
+  const { data: userRole } = useQuery({
+    queryKey: ['userRole'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      return data?.role;
+    }
+  });
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['product', id],
@@ -65,14 +84,42 @@ export default function ProductDetail({ id }: { id: string }) {
     setZoomPosition({ x, y });
   };
 
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (isNaN(value) || value < 1) return;
+    if (product && value > product.stock) {
+      toast({
+        title: "Error",
+        description: `Solo hay ${product.stock} unidades disponibles`,
+        variant: "destructive"
+      });
+      return;
+    }
+    setQuantity(value);
+  };
+
   const handleAddToCart = () => {
     if (!product) return;
+
+    // Check current cart quantity for this product
+    const currentCartItem = cart.items.find(item => item.productId === product.id);
+    const currentQuantity = currentCartItem?.quantity || 0;
+    const totalQuantity = currentQuantity + quantity;
+
+    if (totalQuantity > product.stock) {
+      toast({
+        title: "Error",
+        description: `No puedes agregar más de ${product.stock} unidades de este producto`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     addItem({
       productId: product.id,
       name: product.name,
       price: product.price,
-      quantity: 1,
+      quantity: quantity,
       image: images[0],
     });
 
@@ -210,15 +257,31 @@ export default function ProductDetail({ id }: { id: string }) {
                 </p>
               </div>
 
-              <Button
-                className="w-full"
-                size="lg"
-                disabled={product.stock === 0}
-                onClick={handleAddToCart}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Agregar al Carrito
-              </Button>
+              {userRole !== 'admin' && product.stock > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Cantidad</h3>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={product.stock}
+                    value={quantity}
+                    onChange={handleQuantityChange}
+                    className="w-24"
+                  />
+                </div>
+              )}
+
+              {userRole !== 'admin' && (
+                <Button
+                  className="w-full"
+                  size="lg"
+                  disabled={product.stock === 0}
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  Agregar al Carrito
+                </Button>
+              )}
             </motion.div>
           </Card>
         </div>

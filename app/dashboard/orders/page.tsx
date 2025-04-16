@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { OrderStatus, statusColors, statusLabels } from '@/types/enums';
+import { Order, OrderWithUser } from '@/types/order';
+
 import {
   Select,
   SelectContent,
@@ -15,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import {
   Table,
   TableBody,
@@ -23,42 +27,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { Input } from '@/components/ui/input';
 import { Search, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { Order, OrderItem } from '@/types/order';
-import { OrderStatus } from '@/types/enums';
 
-const statusIcons = {
+// Define status icons using Lucide components
+const StatusIconComponents = {
   pending: Clock,
   processing: Package,
   shipped: Package,
   delivered: CheckCircle,
   cancelled: XCircle,
 } as const;
-
-const statusColors = {
-  pending: 'text-yellow-500',
-  processing: 'text-blue-500',
-  shipped: 'text-purple-500',
-  delivered: 'text-green-500',
-  cancelled: 'text-red-500',
-} as const;
-
-const statusLabels = {
-  pending: 'Pendiente',
-  processing: 'En proceso',
-  shipped: 'Enviado',
-  delivered: 'Entregado',
-  cancelled: 'Cancelado',
-} as const;
-
-interface OrderWithUser extends Order {
-  user: {
-    id: string;
-    email: string;
-    full_name: string;
-  } | null;
-}
 
 export default function OrdersManagementPage() {
   const queryClient = useQueryClient();
@@ -72,23 +52,24 @@ export default function OrdersManagementPage() {
   }, []);
 
   // Fetch all orders with user details
-  const { data: orders = [], isLoading } = useQuery<OrderWithUser[]>({
+  const { data: orders = [], isLoading } = useQuery({
     queryKey: ['admin-orders', searchQuery, statusFilter],
     queryFn: async () => {
       let query = supabase
         .from('orders')
         .select(`
-          id,
-          created_at,
-          status,
-          total_amount,
-          user_id,
+          *,
+          profiles (
+            id,
+            email,
+            full_name
+          ),
           order_items (
             id,
             product_id,
             quantity,
             unit_price,
-            product:products (
+            products (
               name,
               image_url
             )
@@ -96,54 +77,49 @@ export default function OrdersManagementPage() {
         `)
         .order('created_at', { ascending: false });
 
+        console.log((await query).data);
+
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
+      }
+
+      if (searchQuery) {
+        query = query.textSearch('profiles.full_name', searchQuery);
       }
 
       const { data: orders, error: ordersError } = await query;
       if (ordersError) throw ordersError;
 
-      // Get unique user IDs from orders
-      const userIds = [...new Set(orders?.map(order => order.user_id) || [])];
+      console.log('Raw orders data:', orders);
 
-      // Fetch user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      // Create a map of user profiles
-      const userMap = new Map(profiles?.map(profile => [profile.id, profile]));
-
-      // Combine orders with user profiles and ensure proper typing
-      const ordersWithUsers: OrderWithUser[] = (orders || []).map(order => ({
-        ...order,
+      // Transform the data to match our types
+      return orders?.map(order => ({
+        id: order.id,
+        created_at: order.created_at,
         status: order.status as OrderStatus,
-        order_items: order.order_items.map(item => ({
-          ...item,
+        total_amount: order.total_amount,
+        user_id: order.user_id,
+        user: order.profiles ? {
+          id: order.profiles.id,
+          email: order.profiles.email,
+          full_name: order.profiles.full_name
+        } : null,
+        order_items: (order.order_items || []).map(item => ({
+          id: item.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
           product: {
-            name: item.product.name,
-            image_url: parseImageUrls(item.product.image_url)
+            name: item.products?.name || 'Producto no disponible',
+            image_url: parseImageUrls(item.products?.image_url)
           }
-        })),
-        user: userMap.get(order.user_id) || null
-      }));
-
-      if (searchQuery) {
-        return ordersWithUsers.filter(order => 
-          order.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-
-      return ordersWithUsers;
+        }))
+      })) as OrderWithUser[];
     }
   });
 
   // Helper function to parse image URLs
-  const parseImageUrls = (imageUrl: string | string[]): string[] => {
+  const parseImageUrls = (imageUrl: string | string[] | undefined): string[] => {
     if (!imageUrl) return [];
     
     if (typeof imageUrl === 'string') {
@@ -265,7 +241,7 @@ export default function OrdersManagementPage() {
                 </TableHeader>
                 <TableBody>
                   {orders.map((order) => {
-                    const StatusIcon = statusIcons[order.status];
+                    const StatusIcon = StatusIconComponents[order.status];
 
                     return (
                       <TableRow key={order.id}>

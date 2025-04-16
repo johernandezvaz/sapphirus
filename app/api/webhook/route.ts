@@ -60,58 +60,88 @@ export async function POST(request: NextRequest) {
 
         if (orderError) throw orderError;
 
-        // Create order items and update product stock
+        // Process each item in the order
         for (const item of items) {
-          // Add order item
-          const { error: itemError } = await supabase
-            .from('order_items')
-            .insert({
-              order_id: order.id,
-              product_id: item.productId,
-              quantity: item.quantity,
-              unit_price: item.price,
-              created_at: new Date().toISOString()
-            });
+          try {
+            // First, get the current product stock
+            const { data: product, error: productError } = await supabase
+              .from('products')
+              .select('stock')
+              .eq('id', item.productId)
+              .single();
 
-          if (itemError) throw itemError;
+            if (productError) {
+              console.error(`Error fetching product ${item.productId}:`, productError);
+              continue;
+            }
 
-          // Update product stock
-          // 1. Obtener el producto
-const { data: product, error: fetchError } = await supabase
-.from('products')
-.select('stock')
-.eq('id', item.productId)
-.single();
+            if (!product) {
+              console.error(`Product ${item.productId} not found`);
+              continue;
+            }
 
-if (fetchError) {
-console.error('Error obteniendo producto:', fetchError.message);
-return;
-}
+            // Create order item
+            const { error: itemError } = await supabase
+              .from('order_items')
+              .insert({
+                order_id: order.id,
+                product_id: item.productId,
+                quantity: item.quantity,
+                unit_price: item.price,
+                created_at: new Date().toISOString()
+              });
 
-// 2. Calcular nuevo stock
-const newStock = Math.max(0, product.stock - item.quantity);
+            if (itemError) {
+              console.error(`Error creating order item for product ${item.productId}:`, itemError);
+              continue;
+            }
 
-// 3. Actualizar producto
-const { error: updateError } = await supabase
-.from('products')
-.update({ stock: newStock })
-.eq('id', item.productId);
+            // Calculate and update new stock
+            const newStock = Math.max(0, product.stock - item.quantity);
+            const { error: updateError } = await supabase
+              .from('products')
+              .update({ 
+                stock: newStock,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.productId);
 
-if (updateError) {
-console.error('Error actualizando stock:', updateError.message);
-}
+            if (updateError) {
+              console.error(`Error updating stock for product ${item.productId}:`, updateError);
+            } else {
+              console.log(`Successfully updated stock for product ${item.productId} from ${product.stock} to ${newStock}`);
+            }
+          } catch (itemProcessError) {
+            console.error(`Error processing item ${item.productId}:`, itemProcessError);
+          }
         }
 
         console.log(`Payment succeeded and order created: ${order.id}`);
+        return NextResponse.json({ 
+          received: true, 
+          orderId: order.id,
+          status: 'success'
+        });
+
       } catch (error) {
         console.error('Error processing payment success:', error);
-        return NextResponse.json({ error: 'Error processing payment' }, { status: 500 });
+        return NextResponse.json({ 
+          error: 'Error processing payment',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }, { 
+          status: 500 
+        });
       }
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Webhook processing error:', error);
-    return NextResponse.json({ error: 'Webhook processing error' }, { status: 400 });
+    return NextResponse.json({ 
+      error: 'Webhook processing error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { 
+      status: 400 
+    });
   }
 }
