@@ -16,6 +16,8 @@ interface PaymentFormProps {
   items: CartItem[];
 }
 
+// PAra el push
+
 export default function PaymentForm({ amount, onSuccess, onCancel, items }: PaymentFormProps) {
   const [stripe, setStripe] = useState<Stripe | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
