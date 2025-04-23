@@ -32,10 +32,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No authenticated session');
 
-        // Use the full API URL from environment variable
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/create-payment-intent`;
-        
-        const response = await fetch(apiUrl, {
+        const response = await fetch('/api/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -48,7 +45,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to create payment intent');
         }
 
@@ -58,7 +55,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
         console.error('Payment intent error:', error);
         toast({
           title: "Error",
-          description: "Error al procesar el pago. Por favor, intenta nuevamente.",
+          description: error.message || "Error al procesar el pago",
           variant: "destructive",
         });
       } finally {
