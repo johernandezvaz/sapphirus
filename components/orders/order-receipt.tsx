@@ -34,7 +34,7 @@ interface OrderReceiptProps {
 export default function OrderReceipt({ order }: OrderReceiptProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
-  const whatsappNumber = '6141336763';
+  const whatsappNumber = ' 6141776394';
 
   // Helper function to get the first valid image URL
   const getFirstImageUrl = (imageUrl: string | string[]): string => {
@@ -200,7 +200,7 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
 
         <div className="mt-8 pt-4 border-t text-center text-sm text-gray-600">
           <p>Gracias por tu compra en Sapphirus</p>
-          <p>Para cualquier consulta, contáctanos al: 614 133 6763</p>
+          <p>Para cualquier consulta, contáctanos al: 614 177 6394</p>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ export async function checkUser() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return null;
 
+    // Get user profile with role
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -26,18 +27,43 @@ export async function checkUser() {
   }
 }
 
-export async function requireAuth(role?: 'admin' | 'client') {
-  const auth = await checkUser();
-  
-  if (!auth?.session) {
+export async function requireAuth(requiredRole?: 'admin' | 'client') {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '/auth';
+      return null;
+    }
+
+    // Get user profile with role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      window.location.href = '/auth';
+      return null;
+    }
+
+    // If no specific role is required, just check for authentication
+    if (!requiredRole) {
+      return { session, role: profile.role };
+    }
+
+    // If a specific role is required, check if the user has that role
+    if (profile.role !== requiredRole) {
+      window.location.href = '/';
+      return null;
+    }
+
+    return { session, role: profile.role };
+  } catch (error) {
+    console.error('Error in requireAuth:', error);
+    await supabase.auth.signOut();
     window.location.href = '/auth';
     return null;
   }
-
-  if (role && auth.role !== role) {
-    window.location.href = '/';
-    return null;
-  }
-
-  return auth;
 }
