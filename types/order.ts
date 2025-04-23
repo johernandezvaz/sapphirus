@@ -11,22 +11,10 @@ export interface OrderItem {
   };
 }
 
-export interface OrderUser {
-  id: string;
-  email: string;
-  full_name: string;
-}
-
 export interface Order {
   id: string;
   created_at: string;
   status: OrderStatus;
   total_amount: number;
-  user_id: string;
-  user?: OrderUser;
   order_items: OrderItem[];
-}
-
-export interface OrderWithUser extends Omit<Order, 'user'> {
-  user: OrderUser | null;
 }
