@@ -12,6 +12,21 @@ import OrderReceipt from '@/components/orders/order-receipt';
 import { Order } from '@/types/order';
 import { statusColors, statusLabels } from '@/types/enums';
 
+interface RawOrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  products: {
+    name: string;
+    image_url: string | string[];
+  } | null;
+}
+
+interface RawOrder extends Omit<Order, 'order_items'> {
+  order_items: RawOrderItem[];
+}
+
 const statusIcons = {
   pending: Clock,
   processing: Package,
@@ -51,8 +66,24 @@ export default function OrdersPage() {
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
+
+      console.log(data);    
       if (error) throw error;
-      return data as Order[];
+
+      // Transform the raw data to match our Order type
+      return (data as RawOrder[])?.map(order => ({
+        ...order,
+        order_items: order.order_items.map(item => ({
+          id: item.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          product: {
+            name: item.products?.name || 'Producto no disponible',
+            image_url: parseImageUrls(item.products?.image_url)
+          }
+        }))
+      }));
     }
   });
 
@@ -60,22 +91,25 @@ export default function OrdersPage() {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
   };
 
-  // Helper function to get the first valid image URL
-  const getFirstImageUrl = (imageUrl: string | string[]): string => {
-    if (!imageUrl) return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+  // Helper function to parse image URLs
+  const parseImageUrls = (imageUrl: string | string[] | undefined | null): string[] => {
+    if (!imageUrl) return [];
     
     if (typeof imageUrl === 'string') {
       try {
         const parsed = JSON.parse(imageUrl);
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+        return Array.isArray(parsed) ? parsed : [imageUrl];
       } catch {
-        return imageUrl;
+        return [imageUrl];
       }
     }
     
-    return Array.isArray(imageUrl) && imageUrl.length > 0 
-      ? imageUrl[0] 
-      : 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
+    return Array.isArray(imageUrl) ? imageUrl : [];
+  };
+
+  // Helper function to get the first valid image URL
+  const getFirstImageUrl = (imageUrl: string[]): string => {
+    return imageUrl[0] || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc';
   };
 
   if (isLoading) {
@@ -183,13 +217,13 @@ export default function OrdersPage() {
                           >
                             <div className="h-16 w-16 relative rounded overflow-hidden">
                               <img
-                                src={getFirstImageUrl(item.product?.image_url)}
-                                alt={item.product?.name || 'Producto'}
+                                src={getFirstImageUrl(item.product.image_url)}
+                                alt={item.product.name}
                                 className="object-cover w-full h-full"
                               />
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-medium">{item.product?.name || 'Producto'}</h3>
+                              <h3 className="font-medium">{item.product.name}</h3>
                               <p className="text-sm text-muted-foreground">
                                 Cantidad: {item.quantity} × ${item.unit_price.toFixed(2)}
                               </p>
