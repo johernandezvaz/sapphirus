@@ -45,11 +45,14 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create payment intent');
+          throw new Error('Failed to create payment intent');
         }
 
         const data = await response.json();
+        if (!data.clientSecret) {
+          throw new Error('Invalid response from payment service');
+        }
+
         setClientSecret(data.clientSecret);
       } catch (error: any) {
         console.error('Payment intent error:', error);
