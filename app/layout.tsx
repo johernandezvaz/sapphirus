@@ -12,8 +12,8 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: {
-    default: 'Fajas Colombianas Maydel',
-    template: 'Fajas Colombianas Maydel - %s'
+    default: 'Sapphirus',
+    template: 'Sapphirus - %s'
   },
   description: 'Descubre elegancia en cada detalle',
   icons: {
