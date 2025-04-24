@@ -22,9 +22,9 @@ export default function ProductDetail({ id }: { id: string }) {
   const { addItem, cart } = useCartStore();
   const { toast } = useToast();
 
-  // Query to get user role
-  const { data: userRole } = useQuery({
-    queryKey: ['userRole'],
+  // Query to get user session and role
+  const { data: session } = useQuery({
+    queryKey: ['session'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
@@ -35,7 +35,10 @@ export default function ProductDetail({ id }: { id: string }) {
         .eq('id', session.user.id)
         .single();
 
-      return data?.role;
+      return {
+        session,
+        role: data?.role
+      };
     }
   });
 
@@ -100,6 +103,11 @@ export default function ProductDetail({ id }: { id: string }) {
 
   const handleAddToCart = () => {
     if (!product) return;
+
+    if (!session?.session) {
+      router.push('/auth');
+      return;
+    }
 
     // Check current cart quantity for this product
     const currentCartItem = cart.items.find(item => item.productId === product.id);
@@ -257,7 +265,7 @@ export default function ProductDetail({ id }: { id: string }) {
                 </p>
               </div>
 
-              {userRole !== 'admin' && product.stock > 0 && (
+              {session?.role !== 'admin' && product.stock > 0 && (
                 <div>
                   <h3 className="text-sm font-medium mb-2">Cantidad</h3>
                   <Input
@@ -271,7 +279,7 @@ export default function ProductDetail({ id }: { id: string }) {
                 </div>
               )}
 
-              {userRole !== 'admin' && (
+              {session?.role !== 'admin' && (
                 <Button
                   className="w-full"
                   size="lg"
@@ -279,7 +287,7 @@ export default function ProductDetail({ id }: { id: string }) {
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-5 w-5" />
-                  Agregar al Carrito
+                  {!session?.session ? 'Iniciar Sesión para Comprar' : 'Agregar al Carrito'}
                 </Button>
               )}
             </motion.div>

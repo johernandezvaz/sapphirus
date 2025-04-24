@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="flex space-x-6">
             <a 
-              href="https://facebook.com" 
+              href="https://www.facebook.com/profile.php?id=61553252459624" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -18,22 +18,13 @@ export default function Footer() {
               <span className="sr-only">Facebook</span>
             </a>
             <a 
-              href="https://instagram.com" 
+              href="https://www.instagram.com/sapphirus_store_cuu?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <Instagram className="h-6 w-6" />
               <span className="sr-only">Instagram</span>
-            </a>
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Twitter className="h-6 w-6" />
-              <span className="sr-only">Twitter</span>
             </a>
           </div>
           <div className="text-center text-sm text-muted-foreground">
