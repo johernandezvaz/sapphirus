@@ -9,19 +9,19 @@ export default function TestimonialsSection() {
     {
       content: "Excelente servicio y productos de alta calidad. Definitivamente volveré a comprar.",
       author: "María González",
-      image: "https://randomuser.me/api/portraits/women/44.jpg",
+      image: "/logo-black.png",
       rating: 5
     },
     {
       content: "Los productos llegaron en perfecto estado y antes de lo esperado. Muy recomendable.",
       author: "Carlos Ramírez",
-      image: "https://randomuser.me/api/portraits/men/32.jpg",
+      image: "/logo-black.png",
       rating: 4.5
     },
     {
       content: "La atención al cliente es excepcional. Resolvieron todas mis dudas rápidamente.",
       author: "Laura Mendoza",
-      image: "https://randomuser.me/api/portraits/women/68.jpg",
+      image: "/logo-black.png",
       rating: 5
     }
   ];

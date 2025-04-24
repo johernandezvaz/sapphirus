@@ -11,28 +11,19 @@ import { ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  stock: number;
-  size?: string;
-  image_url: string[];
-  created_at: string;
-}
+import { useRouter } from 'next/navigation';
+import { Product } from '@/types/product';
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { addItem, cart } = useCartStore();
   const { toast } = useToast();
+  const router = useRouter();
 
-  // Query to get user role
-  const { data: userRole } = useQuery({
-    queryKey: ['userRole'],
+  // Query to get user session and role
+  const { data: session } = useQuery({
+    queryKey: ['session'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
@@ -43,7 +34,10 @@ export default function FeaturedProducts() {
         .eq('id', session.user.id)
         .single();
 
-      return data?.role;
+      return {
+        session,
+        role: data?.role
+      };
     }
   });
 
@@ -89,6 +83,11 @@ export default function FeaturedProducts() {
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.preventDefault(); // Prevent navigation when clicking the button
     e.stopPropagation(); // Stop event bubbling
+
+    if (!session?.session) {
+      router.push('/auth');
+      return;
+    }
 
     // Check current cart quantity for this product
     const currentCartItem = cart.items.find(item => item.productId === product.id);
@@ -218,10 +217,15 @@ export default function FeaturedProducts() {
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                     {product.description}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <p className="text-lg font-semibold">
                       ${product.price.toFixed(2)}
                     </p>
+                    <span className="text-sm text-muted-foreground">
+                      Talla: {product.size || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
                     {product.stock > 0 ? (
                       <span className="text-sm text-green-600 dark:text-green-400">
                         {product.stock} disponibles
@@ -233,7 +237,7 @@ export default function FeaturedProducts() {
                     )}
                   </div>
                 </CardContent>
-                {userRole !== 'admin' && (
+                {session?.role !== 'admin' && (
                   <CardFooter>
                     <Button 
                       className="w-full"
@@ -241,7 +245,7 @@ export default function FeaturedProducts() {
                       onClick={(e) => handleAddToCart(e, product)}
                     >
                       <ShoppingCart className="mr-2 h-4 w-4" />
-                      Agregar al Carrito
+                      {!session?.session ? 'Iniciar Sesión para Comprar' : 'Agregar al Carrito'}
                     </Button>
                   </CardFooter>
                 )}
