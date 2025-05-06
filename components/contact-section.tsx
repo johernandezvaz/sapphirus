@@ -14,13 +14,26 @@ export default function ContactSection() {
     message: ''
   });
   const { toast } = useToast();
+  const whatsappNumber = '526141776394'; // Format: Country code (52) + number
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Format the message for WhatsApp
+    const message = `¡Hola! Mi nombre es ${formData.name}.\n\n` +
+      `Me gustaría obtener más información sobre sus productos.\n\n` +
+      `${formData.message}\n\n` +
+      `Pueden contactarme en: ${formData.email}`;
+
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    
+    // Open WhatsApp in a new tab
+    window.open(whatsappUrl, '_blank');
+    
     toast({
-      title: "Mensaje enviado",
-      description: "Nos pondremos en contacto contigo pronto.",
+      title: "¡Perfecto!",
+      description: "Te redirigiremos a WhatsApp para completar tu mensaje.",
     });
     
     setFormData({ name: '', email: '', message: '' });
@@ -99,7 +112,7 @@ export default function ContactSection() {
               whileTap={{ scale: 0.98 }}
             >
               <Button type="submit" className="w-full">
-                Enviar Mensaje
+                Enviar Mensaje por WhatsApp
               </Button>
             </motion.div>
           </motion.form>
