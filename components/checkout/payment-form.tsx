@@ -118,19 +118,51 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
             <CardHeader>
               <CardTitle>Resumen del Pedido</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${amount.toFixed(2)}</span>
+            <CardContent className="space-y-4">
+              {/* Lista de productos */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Productos:</h4>
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 py-2">
+                    <div className="h-12 w-12 relative rounded overflow-hidden bg-muted">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-sm">{item.name}</h5>
+                      <p className="text-xs text-muted-foreground">
+                        Cantidad: {item.quantity} × ${item.price.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-sm">
+                        ${(item.quantity * item.price).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between">
-                <span>Envío:</span>
-                <span>${shippingCost.toFixed(2)}</span>
-              </div>
+              
               <Separator />
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Total:</span>
-                <span>${totalWithShipping.toFixed(2)}</span>
+              
+              {/* Totales */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>${amount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Envío:</span>
+                  <span>${shippingCost.toFixed(2)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total:</span>
+                  <span>${totalWithShipping.toFixed(2)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -187,24 +219,56 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
         </CardContent>
       </Card>
 
-      {/* Resumen del pedido */}
+      {/* Resumen del pedido con productos */}
       <Card>
         <CardHeader>
           <CardTitle>Resumen del Pedido</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-between">
-            <span>Subtotal:</span>
-            <span>${amount.toFixed(2)}</span>
+        <CardContent className="space-y-4">
+          {/* Lista de productos */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-sm text-muted-foreground">Productos:</h4>
+            {items.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 py-2">
+                <div className="h-12 w-12 relative rounded overflow-hidden bg-muted">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-sm">{item.name}</h5>
+                  <p className="text-xs text-muted-foreground">
+                    Cantidad: {item.quantity} × ${item.price.toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-sm">
+                    ${(item.quantity * item.price).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between">
-            <span>Envío:</span>
-            <span>${shippingCost.toFixed(2)}</span>
-          </div>
+          
           <Separator />
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Total:</span>
-            <span>${totalWithShipping.toFixed(2)}</span>
+          
+          {/* Totales */}
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>${amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Envío:</span>
+              <span>${shippingCost.toFixed(2)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total:</span>
+              <span>${totalWithShipping.toFixed(2)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
