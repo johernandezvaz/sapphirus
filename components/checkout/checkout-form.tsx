@@ -149,31 +149,42 @@ export default function CheckoutForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-        >
-          Volver
-        </Button>
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2" />
-              Procesando...
-            </>
-          ) : (
-            `Pagar $${total.toFixed(2)}`
-          )}
-        </Button>
-      </div>
-    </form>
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="min-h-[200px]">
+          <PaymentElement 
+            options={{
+              layout: 'tabs',
+              paymentMethodOrder: ['card'],
+            }}
+          />
+        </div>
+        
+        <div className="flex justify-end gap-4 pt-4 border-t sticky bottom-0 bg-background">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isProcessing}
+          >
+            Volver
+          </Button>
+          <Button
+            type="submit"
+            disabled={!stripe || isProcessing}
+            className="min-w-[120px]"
+          >
+            {isProcessing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2" />
+                Procesando...
+              </>
+            ) : (
+              `Pagar $${total.toFixed(2)}`
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

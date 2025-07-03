@@ -106,7 +106,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
 
   if (step === 'address') {
     return (
-      <div className="space-y-6">
+      <div className="max-h-[80vh] overflow-y-auto space-y-6 pr-2">
         <ShippingAddressSelector
           selectedAddressId={selectedAddress?.id}
           onAddressSelect={handleAddressSelect}
@@ -124,20 +124,20 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
                 <h4 className="font-medium text-sm text-muted-foreground">Productos:</h4>
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 py-2">
-                    <div className="h-12 w-12 relative rounded overflow-hidden bg-muted">
+                    <div className="h-12 w-12 relative rounded overflow-hidden bg-muted flex-shrink-0">
                       <img
                         src={item.image}
                         alt={item.name}
                         className="object-cover w-full h-full"
                       />
                     </div>
-                    <div className="flex-1">
-                      <h5 className="font-medium text-sm">{item.name}</h5>
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-medium text-sm truncate">{item.name}</h5>
                       <p className="text-xs text-muted-foreground">
                         Cantidad: {item.quantity} × ${item.price.toFixed(2)}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className="font-medium text-sm">
                         ${(item.quantity * item.price).toFixed(2)}
                       </p>
@@ -168,7 +168,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
           </Card>
         )}
 
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end gap-4 sticky bottom-0 bg-background py-4 border-t">
           <button
             type="button"
             onClick={onCancel}
@@ -197,7 +197,7 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-h-[80vh] overflow-y-auto space-y-6 pr-2">
       {/* Resumen de dirección seleccionada */}
       <Card>
         <CardHeader>
@@ -228,28 +228,30 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
           {/* Lista de productos */}
           <div className="space-y-3">
             <h4 className="font-medium text-sm text-muted-foreground">Productos:</h4>
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 py-2">
-                <div className="h-12 w-12 relative rounded overflow-hidden bg-muted">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="object-cover w-full h-full"
-                  />
+            <div className="max-h-40 overflow-y-auto space-y-2">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 py-2">
+                  <div className="h-12 w-12 relative rounded overflow-hidden bg-muted flex-shrink-0">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-medium text-sm truncate">{item.name}</h5>
+                    <p className="text-xs text-muted-foreground">
+                      Cantidad: {item.quantity} × ${item.price.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-medium text-sm">
+                      ${(item.quantity * item.price).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h5 className="font-medium text-sm">{item.name}</h5>
-                  <p className="text-xs text-muted-foreground">
-                    Cantidad: {item.quantity} × ${item.price.toFixed(2)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-sm">
-                    ${(item.quantity * item.price).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           
           <Separator />
@@ -274,24 +276,34 @@ export default function PaymentForm({ amount, onSuccess, onCancel, items }: Paym
       </Card>
 
       {/* Formulario de pago */}
-      <Elements stripe={stripe} options={{ 
-        clientSecret,
-        appearance: {
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#708090',
-          }
-        }
-      }}>
-        <CheckoutForm 
-          onSuccess={onSuccess} 
-          onCancel={() => setStep('address')}
-          items={items}
-          total={totalWithShipping}
-          shippingAddress={selectedAddress!}
-          shippingCost={shippingCost}
-        />
-      </Elements>
+      <Card>
+        <CardHeader>
+          <CardTitle>Información de Pago</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Elements stripe={stripe} options={{ 
+            clientSecret,
+            appearance: {
+              theme: 'stripe',
+              variables: {
+                colorPrimary: '#708090',
+                borderRadius: '8px',
+                spacingUnit: '4px',
+                fontFamily: 'Inter, system-ui, sans-serif',
+              }
+            }
+          }}>
+            <CheckoutForm 
+              onSuccess={onSuccess} 
+              onCancel={() => setStep('address')}
+              items={items}
+              total={totalWithShipping}
+              shippingAddress={selectedAddress!}
+              shippingCost={shippingCost}
+            />
+          </Elements>
+        </CardContent>
+      </Card>
     </div>
   );
 }
